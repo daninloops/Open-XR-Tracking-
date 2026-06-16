@@ -1,48 +1,46 @@
-// YoloAnchorManager.cs
-// This is the brain of the pipeline.
-// It receives Detection objects and decides:
-//   → Is this label new?  Call CreateAnchor()
-//   → Have we seen it before?  Call MoveAnchor()
-// It also owns the label dictionary so each label maps to exactly one anchor.
-
 using UnityEngine;
 using System.Collections.Generic;
 
 public class YoloAnchorManager : MonoBehaviour
 {
     [SerializeField] private AnchorTracker anchorTracker;
+    [SerializeField] private ArrowSelector arrowSelector;
+    [SerializeField] private SelectionUI selectionUI;
 
-    // Maps each label string to its live anchor marker
-    // e.g. "cup" → the IAnchorMarker managing the cup's anchor
     private Dictionary<string, AnchorTracker.IAnchorMarker> anchorMap
         = new Dictionary<string, AnchorTracker.IAnchorMarker>();
 
-    // Called every frame (or every detection cycle) with the latest Detection
-    // worldPosition is computed by the projection pipeline (Part C, Day 2)
+    // Tracks label → index so SelectionUI knows which button maps to which anchor
+    private Dictionary<string, int> indexMap = new Dictionary<string, int>();
+
+    private int objectCount = 0;
+
     public void ProcessDetection(Detection detection, Vector3 worldPosition)
     {
-        // Ignore low-confidence detections (below 50%)
-        if (detection.confidence < 0.5f)
-        {
-            Debug.Log($"[YoloAnchorManager] Skipping '{detection.label}' — low confidence ({detection.confidence})");
-            return;
-        }
+        if (detection.confidence < 0.5f) return;
 
         if (!anchorMap.ContainsKey(detection.label))
         {
-            // First time seeing this label → create a new anchor
-            AnchorTracker.IAnchorMarker marker = anchorTracker.CreateAnchor(detection.label, worldPosition);
+            objectCount++;
 
-            // Store it so we can update it on future detections
+            // CreateAnchor now returns the index via out parameter
+            int index;
+            AnchorTracker.IAnchorMarker marker = anchorTracker.CreateAnchor(
+                detection.label, worldPosition, out index
+            );
+
             anchorMap[detection.label] = marker;
+            indexMap[detection.label] = index;
+
+            // Register with UI and ArrowSelector
+            selectionUI.RegisterObject($"O{objectCount}", index);
+            arrowSelector.RegisterAnchor(index, marker.GetTransform());
 
             Debug.Log($"[YoloAnchorManager] New label '{detection.label}' → anchor created.");
         }
         else
         {
-            // Label seen before → update the existing anchor's position
             anchorTracker.MoveAnchor(anchorMap[detection.label], worldPosition);
-
             Debug.Log($"[YoloAnchorManager] Known label '{detection.label}' → anchor moved.");
         }
     }
