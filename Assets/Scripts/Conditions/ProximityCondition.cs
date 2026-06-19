@@ -1,17 +1,12 @@
 using UnityEngine;
-using UnityEngine;
 
-/// <summary>
-/// Met the frame the interactor comes within 'radius' of the anchor.
-/// Per-frame cost: one Vector3.Distance call.
-/// </summary>
 public class ProximityCondition : ICondition
 {
-    private readonly Transform       _anchor;
+    private readonly Transform        _anchor;
     private readonly IInteractorInput _input;
     private readonly float            _radius;
 
-    public ProximityCondition(Transform anchor, IInteractorInput input, float radius = 0.6f)
+    public ProximityCondition(Transform anchor, IInteractorInput input, float radius = 3.0f)
     {
         _anchor = anchor;
         _input  = input;
@@ -23,7 +18,14 @@ public class ProximityCondition : ICondition
 
     public bool Check()
     {
-        if (_anchor == null) return false;
-        return Vector3.Distance(_input.InteractorPosition, _anchor.position) <= _radius;
+        if (_anchor == null)
+        {
+            Debug.LogError("ProximityCondition: anchor is NULL");
+            return false;
+        }
+
+        float dist = Vector3.Distance(_input.InteractorPosition, _anchor.position);
+        Debug.Log($"Interactor: {_input.InteractorPosition}  |  Anchor: {_anchor.position}  |  Dist: {dist}");
+        return dist <= _radius;
     }
 }

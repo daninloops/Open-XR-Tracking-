@@ -28,19 +28,16 @@ public class ArrowController : MonoBehaviour
     }
 
     void Update()
-    {
-        if (_anchor == null) return;
+  
+{
+    if (_anchor == null) return;
 
-        _bobTimer += Time.deltaTime * bobSpeed;
-        float bob = Mathf.Sin(_bobTimer) * bobAmount;
+    _bobTimer += Time.deltaTime * bobSpeed;
+    float bob = Mathf.Sin(_bobTimer) * bobAmount;
 
-        transform.position = _anchor.position + Vector3.up * (floatHeight + bob);
-
-        // Point down toward the anchor
-        Vector3 dir = _anchor.position - transform.position;
-        if (dir != Vector3.zero)
-            transform.rotation = Quaternion.LookRotation(dir, Vector3.up);
-    }
+    transform.position = _anchor.position + Vector3.up * (floatHeight + bob);
+    transform.rotation = Quaternion.Euler(180f, 0f, 0f); // always points straight down
+}
 
     public void SetTarget(Transform anchor)
     {
