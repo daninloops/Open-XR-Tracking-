@@ -48,6 +48,8 @@ public class RotateCondition : ICondition
         float currentY = _target.eulerAngles.y;
         float delta    = Mathf.DeltaAngle(_lastY, currentY);
         _lastY = currentY;
+          Debug.Log($"Delta: {delta}  Accumulated: {_accumulated}  CorrectionActive: {_correctionActive}");
+
 
         if (Mathf.Abs(delta) < 0.01f) return false; // no movement
 
