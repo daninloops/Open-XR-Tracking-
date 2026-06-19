@@ -145,16 +145,16 @@ public class SequenceManager : MonoBehaviour
         Debug.Log($"[SequenceManager] Step {_step + 1} complete.");
         GoToStep(_step + 1);
     }
-    void update()
+    void Update()
     {
         // rotate the current target with q/e not the interactor
         if(_step<0 || _step>=_data.steps.Count) return;
         ShapeTarget target = targetProvider.GetTargetByName(_data.steps[_step].target);
     if (target == null) return;
 
-    if (Input.GetKey(KeyCode.Q))
-        target.transform.Rotate(0f, -90f * Time.deltaTime, 0f, Space.World); // CCW
-    if (Input.GetKey(KeyCode.E))
-        target.transform.Rotate(0f,  90f * Time.deltaTime, 0f, Space.World); // CW
-    }
-}
+   if (Input.GetKey(KeyCode.Q))
+    target.transform.Rotate(0f,  90f * Time.deltaTime, 0f, Space.World); // CCW = positive Y
+if (Input.GetKey(KeyCode.E))
+    target.transform.Rotate(0f, -90f * Time.deltaTime, 0f, Space.World); // CW  = negative Y
+    
+    }}
