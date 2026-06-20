@@ -2,6 +2,6 @@
   "steps": [
     { "target":"CubeA", "condition":"proximity", "dir":"", "amount":0 },
     { "target":"CubeB", "condition":"rotate", "dir":"CCW", "amount":90 },
-    { "target":"SphereC", "condition":"confirm", "dir":"", "amount":0 }
+    { "target":"SphereC", "condition":"rotate", "dir":"CW", "amount":90 }
   ]
 }
