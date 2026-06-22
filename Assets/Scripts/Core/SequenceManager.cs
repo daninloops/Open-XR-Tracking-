@@ -19,8 +19,15 @@ public class SequenceManager : MonoBehaviour
     public GuardMonitor       guardMonitor;
     public SceneTargetProvider targetProvider;
 
+    [Header("Optional audio feedback")]
+    public AudioManager audioManager;
+
     [Header("Drag EditorInteractorDriver here (swap for XRInteractorAdapter on Quest 3)")]
     public MonoBehaviour interactorInputMono;
+
+    [Header("Editor testing")]
+    [Tooltip("Press this key to restart the sequence from Step 1 (Editor stand-in only)")]
+    public KeyCode resetKey = KeyCode.R;
 
     // ── runtime ──────────────────────────────────────────
     private IInteractorInput _input;
@@ -37,6 +44,20 @@ public class SequenceManager : MonoBehaviour
             return;
         }
 
+        LoadAndBegin();
+    }
+
+    void Update()
+    {
+        if (Input.GetKeyDown(resetKey))
+        {
+            Debug.Log("[SequenceManager] Manual reset triggered.");
+            ResetSequence();
+        }
+    }
+
+    void LoadAndBegin()
+    {
         var json = Resources.Load<TextAsset>(jsonResourcePath);
         if (json == null)
         {
@@ -49,6 +70,23 @@ public class SequenceManager : MonoBehaviour
         conditionMonitor.OnConditionMet += OnStepComplete;
 
         promptDisplay?.HidePrompt();
+        _step = -1;
+        GoToStep(0);
+    }
+
+    /// <summary>Resets all shape materials and restarts the sequence from Step 0.</summary>
+    public void ResetSequence()
+    {
+        conditionMonitor.StopMonitoring();
+
+        if (_data != null)
+        {
+            foreach (var sd in _data.steps)
+                targetProvider.GetTargetByName(sd.target)?.ResetMaterial();
+        }
+
+        arrowController.SetCorrectionMode(false);
+        _step = -1;
         GoToStep(0);
     }
 
@@ -64,7 +102,8 @@ public class SequenceManager : MonoBehaviour
         if (_step >= _data.steps.Count)
         {
             arrowController.SetTarget(null);
-            promptDisplay?.ShowPrompt("✅  Sequence Complete!");
+            promptDisplay?.ShowPrompt("✅  Sequence Complete!  (Press R to restart)");
+            audioManager?.PlaySequenceComplete();
             Debug.Log("[SequenceManager] All steps done.");
             return;
         }
@@ -82,6 +121,7 @@ public class SequenceManager : MonoBehaviour
         arrowController.SetTarget(target.anchor);
         guardMonitor.SetCurrentTarget(target);
         ShowPrompt(sd);
+        promptDisplay?.ShowStepCounter(_step, _data.steps.Count);
 
         ICondition cond = BuildCondition(sd, target);
 
@@ -134,7 +174,10 @@ public class SequenceManager : MonoBehaviour
     {
         arrowController.SetCorrectionMode(active);
         if (active)
+        {
             promptDisplay?.ShowPrompt("⚠  Wrong direction!  Go the other way!");
+            audioManager?.PlayGuardError(); // reuse the error sound for wrong-direction too
+        }
         else if (_step < _data.steps.Count)
             ShowPrompt(_data.steps[_step]);
     }
@@ -143,18 +186,8 @@ public class SequenceManager : MonoBehaviour
     {
         conditionMonitor.StopMonitoring();
         Debug.Log($"[SequenceManager] Step {_step + 1} complete.");
+        audioManager?.PlayStepComplete();
+        guardMonitor.TriggerGrace();   // silence guard BEFORE advancing
         GoToStep(_step + 1);
     }
-    void Update()
-    {
-        // rotate the current target with q/e not the interactor
-        if(_step<0 || _step>=_data.steps.Count) return;
-        ShapeTarget target = targetProvider.GetTargetByName(_data.steps[_step].target);
-    if (target == null) return;
-
-   if (Input.GetKey(KeyCode.Q))
-    target.transform.Rotate(0f,  90f * Time.deltaTime, 0f, Space.World); // CCW = positive Y
-if (Input.GetKey(KeyCode.E))
-    target.transform.Rotate(0f, -90f * Time.deltaTime, 0f, Space.World); // CW  = negative Y
-    
-    }}
+}

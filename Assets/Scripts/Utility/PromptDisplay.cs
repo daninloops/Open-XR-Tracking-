@@ -9,6 +9,9 @@ public class PromptDisplay : MonoBehaviour
 {
     public TextMeshProUGUI promptText;
 
+    [Header("Optional: separate text for 'Step X of Y'")]
+    public TextMeshProUGUI stepCounterText;
+
     public void ShowPrompt(string message)
     {
         if (promptText) promptText.text = message;
@@ -18,6 +21,14 @@ public class PromptDisplay : MonoBehaviour
     public void HidePrompt()
     {
         if (promptText) promptText.text = "";
+        if (stepCounterText) stepCounterText.text = "";
         gameObject.SetActive(false);
+    }
+
+    /// <summary>Updates the "Step X of Y" counter. stepIndex is 0-based.</summary>
+    public void ShowStepCounter(int stepIndex, int totalSteps)
+    {
+        if (!stepCounterText) return;
+        stepCounterText.text = $"Step {stepIndex + 1} of {totalSteps}";
     }
 }
