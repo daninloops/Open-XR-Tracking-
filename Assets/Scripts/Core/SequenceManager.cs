@@ -13,11 +13,15 @@ public class SequenceManager : MonoBehaviour
     public string jsonResourcePath = "sequence";
 
     [Header("Scene References")]
-    public ArrowController arrowController;
-    public PromptDisplay   promptDisplay;
-    public ConditionMonitor   conditionMonitor;
-    public GuardMonitor       guardMonitor;
+    public ArrowController     arrowController;
+    public PromptDisplay       promptDisplay;
+    public ConditionMonitor    conditionMonitor;
+    public GuardMonitor        guardMonitor;
     public SceneTargetProvider targetProvider;
+
+    [Header("Camera (used for orientation conditions)")]
+    [Tooltip("Drag the Main Camera inside XR Origin here")]
+    public Transform cameraTransform;
 
     [Header("Optional audio feedback")]
     public AudioManager audioManager;
@@ -26,7 +30,6 @@ public class SequenceManager : MonoBehaviour
     public MonoBehaviour interactorInputMono;
 
     [Header("Editor testing")]
-    [Tooltip("Press this key to restart the sequence from Step 1 (Editor stand-in only)")]
     public KeyCode resetKey = KeyCode.R;
 
     // ── runtime ──────────────────────────────────────────
@@ -43,6 +46,10 @@ public class SequenceManager : MonoBehaviour
             Debug.LogError("[SequenceManager] interactorInputMono must implement IInteractorInput!");
             return;
         }
+
+        // Fallback to main camera if not assigned
+        if (cameraTransform == null)
+            cameraTransform = Camera.main?.transform;
 
         LoadAndBegin();
     }
@@ -74,16 +81,12 @@ public class SequenceManager : MonoBehaviour
         GoToStep(0);
     }
 
-    /// <summary>Resets all shape materials and restarts the sequence from Step 0.</summary>
     public void ResetSequence()
     {
         conditionMonitor.StopMonitoring();
-
         if (_data != null)
-        {
             foreach (var sd in _data.steps)
                 targetProvider.GetTargetByName(sd.target)?.ResetMaterial();
-        }
 
         arrowController.SetCorrectionMode(false);
         _step = -1;
@@ -93,7 +96,6 @@ public class SequenceManager : MonoBehaviour
     // ─────────────────────────────────────────────────────
     void GoToStep(int index)
     {
-        // Mark previous step complete
         if (_step >= 0 && _step < _data.steps.Count)
             targetProvider.GetTargetByName(_data.steps[_step].target)?.SetComplete();
 
@@ -125,7 +127,6 @@ public class SequenceManager : MonoBehaviour
 
         ICondition cond = BuildCondition(sd, target);
 
-        // Hook live-correction events for rotate
         if (cond is RotateCondition rc)
             rc.CorrectionNeeded += OnCorrectionNeeded;
 
@@ -150,10 +151,55 @@ public class SequenceManager : MonoBehaviour
             case "confirm":
                 return new ConfirmCondition(_input);
 
+            // ── NEW orientation conditions ──────────────────
+
+            case "faceuser":
+                // Requires a child OrientationMarker named by sd.markerName
+                var fuMarker = FindMarker(target, sd.markerName);
+                return new FaceUserCondition(fuMarker, cameraTransform,
+                                             sd.angleTolerance > 0 ? sd.angleTolerance : 20f,
+                                             sd.holdDuration   > 0 ? sd.holdDuration   : 1f);
+
+            case "verticalseam":
+                var vsMarker = FindMarker(target, sd.markerName);
+                return new VerticalAlignCondition(vsMarker, cameraTransform,
+                                                  sd.angleTolerance > 0 ? sd.angleTolerance : 15f,
+                                                  sd.holdDuration   > 0 ? sd.holdDuration   : 1f);
+
+            case "faceandtilt":
+                var ftMarker = FindMarker(target, sd.markerName);
+                return new FaceAndTiltCondition(ftMarker, target.transform, cameraTransform,
+                                                sd.amount        > 0 ? sd.amount        : 45f,
+                                                sd.angleTolerance > 0 ? sd.angleTolerance : 20f,
+                                                15f,
+                                                sd.holdDuration   > 0 ? sd.holdDuration   : 1f);
+
             default:
                 Debug.LogWarning($"[SequenceManager] Unknown condition '{sd.condition}' – defaulting to confirm.");
                 return new ConfirmCondition(_input);
         }
+    }
+
+    /// <summary>Finds an OrientationMarker child by name on the target's GameObject.</summary>
+    OrientationMarker FindMarker(ShapeTarget target, string markerName)
+    {
+        if (string.IsNullOrEmpty(markerName))
+        {
+            // Fall back: return first OrientationMarker found on target
+            var fallback = target.GetComponentInChildren<OrientationMarker>();
+            if (fallback == null)
+                Debug.LogError($"[SequenceManager] No OrientationMarker found on {target.name}. " +
+                               "Add a child empty with OrientationMarker component.");
+            return fallback;
+        }
+
+        var child = target.transform.Find(markerName);
+        if (child == null)
+        {
+            Debug.LogError($"[SequenceManager] Marker '{markerName}' not found on {target.name}.");
+            return null;
+        }
+        return child.GetComponent<OrientationMarker>();
     }
 
     // ─────────────────────────────────────────────────────
@@ -162,10 +208,13 @@ public class SequenceManager : MonoBehaviour
         if (!promptDisplay) return;
         string msg = sd.condition.ToLower() switch
         {
-            "proximity" => $"Move close to  {sd.target}",
-            "rotate"    => $"Rotate {sd.target}  {sd.amount}°  {sd.dir}",
-            "confirm"   => $"Press SPACE to confirm  {sd.target}",
-            _           => sd.target
+            "proximity"    => $"Move close to {sd.target}",
+            "rotate"       => $"Rotate {sd.target}  {sd.amount}°  {sd.dir}",
+            "confirm"      => $"Press SPACE to confirm {sd.target}",
+            "faceuser"     => $"Hold {sd.target} so the {sd.markerName} faces you",
+            "verticalseam" => $"Rotate {sd.target} until the seam is vertical",
+            "faceandtilt"  => $"Face {sd.target}'s equator toward you, then tilt 45° up",
+            _              => sd.target
         };
         promptDisplay.ShowPrompt(msg);
     }
@@ -176,7 +225,7 @@ public class SequenceManager : MonoBehaviour
         if (active)
         {
             promptDisplay?.ShowPrompt("⚠  Wrong direction!  Go the other way!");
-            audioManager?.PlayGuardError(); // reuse the error sound for wrong-direction too
+            audioManager?.PlayGuardError();
         }
         else if (_step < _data.steps.Count)
             ShowPrompt(_data.steps[_step]);
@@ -187,7 +236,7 @@ public class SequenceManager : MonoBehaviour
         conditionMonitor.StopMonitoring();
         Debug.Log($"[SequenceManager] Step {_step + 1} complete.");
         audioManager?.PlayStepComplete();
-        guardMonitor.TriggerGrace();   // silence guard BEFORE advancing
+        guardMonitor.TriggerGrace();
         GoToStep(_step + 1);
     }
 }
