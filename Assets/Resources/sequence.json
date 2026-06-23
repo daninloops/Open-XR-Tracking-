@@ -1,40 +1,8 @@
 {
   "steps": [
-    {
-      "target":         "Item1",
-      "condition":      "faceuser",
-      "dir":            "",
-      "amount":         0,
-      "markerName":     "LogoMarker",
-      "angleTolerance": 20,
-      "holdDuration":   1.0
-    },
-    {
-      "target":         "Item2",
-      "condition":      "rotate",
-      "dir":            "CW",
-      "amount":         90,
-      "markerName":     "",
-      "angleTolerance": 0,
-      "holdDuration":   0
-    },
-    {
-      "target":         "Item3",
-      "condition":      "verticalseam",
-      "dir":            "",
-      "amount":         0,
-      "markerName":     "SeamMarker",
-      "angleTolerance": 15,
-      "holdDuration":   1.0
-    },
-    {
-      "target":         "Item4",
-      "condition":      "faceandtilt",
-      "dir":            "",
-      "amount":         45,
-      "markerName":     "EquatorMarker",
-      "angleTolerance": 20,
-      "holdDuration":   1.0
-    }
+    { "target": "Item1", "condition": "facecamera" },
+    { "target": "Item1", "condition": "rotate", "dir": "CW", "amount": 90 },
+    { "target": "Item1", "condition": "seamvertical" },
+    { "target": "Item1", "condition": "equatortilt", "amount": 45 }
   ]
 }

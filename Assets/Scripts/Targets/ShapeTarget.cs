@@ -43,7 +43,12 @@ public class ShapeTarget : MonoBehaviour
         _flashTimer = FlashDuration;
     }
 
-    public void SetComplete()  => ApplyMaterial(completeMaterial);
+public void SetComplete()
+{
+    Debug.Log($"[ShapeTarget] SetComplete called on {gameObject.name}, material={completeMaterial?.name}");
+    ApplyMaterial(completeMaterial);
+    Debug.Log($"[ShapeTarget] After apply, renderer material={_rend?.material?.name}");
+}
     public void ResetMaterial() { _flashing = false; ApplyMaterial(defaultMaterial); }
 
     private void ApplyMaterial(Material m)
