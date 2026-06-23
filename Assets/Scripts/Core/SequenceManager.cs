@@ -46,6 +46,9 @@ public class SequenceManager : MonoBehaviour
         conditionMonitor.OnConditionMet += OnStepComplete;
 
         promptDisplay?.HidePrompt();
+        ShapeTarget firstTarget = targetProvider.GetTargetByName(_data.steps[0].target);
+if (firstTarget != null)
+    firstTarget.transform.rotation = Random.rotation;
         GoToStep(0);
     }
 
@@ -65,6 +68,10 @@ public class SequenceManager : MonoBehaviour
             target.transform.Rotate(45f * Time.deltaTime, 0f, 0f, Space.World);
         if (Input.GetKey(KeyCode.DownArrow))
             target.transform.Rotate(-45f * Time.deltaTime, 0f, 0f, Space.World);
+            if (Input.GetKey(KeyCode.Z))
+    target.transform.Rotate(0f, 0f,  45f * Time.deltaTime, Space.World); // Z CCW
+if (Input.GetKey(KeyCode.X))
+    target.transform.Rotate(0f, 0f, -45f * Time.deltaTime, Space.World); // Z CW
     }
 
     void GoToStep(int index)
@@ -96,7 +103,8 @@ public class SequenceManager : MonoBehaviour
             return;
         }
 
-        target.ResetMaterial();
+       if (_step == 0)
+    target.ResetMaterial();
 
         Transform anchorOrSelf = target.anchor != null ? target.anchor : target.transform;
         arrowController?.SetTarget(anchorOrSelf);
