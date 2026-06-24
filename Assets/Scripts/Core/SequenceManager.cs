@@ -21,7 +21,9 @@ public class SequenceManager : MonoBehaviour
     private IInteractorInput _input;
     private SequenceData     _data;
     private int              _step = -1;
+    private string           _lastTarget = ""; // tracks when we switch to a new shape
 
+    // ─────────────────────────────────────────────────────────────────────
     void Start()
     {
         _input = interactorInputMono as IInteractorInput;
@@ -42,16 +44,21 @@ public class SequenceManager : MonoBehaviour
         }
         _data = JsonUtility.FromJson<SequenceData>(json.text);
 
+        // Randomize every target's starting rotation so no condition is pre-satisfied
+        foreach (var step in _data.steps)
+        {
+            var t = targetProvider.GetTargetByName(step.target);
+            if (t != null) t.transform.rotation = Random.rotation;
+        }
+
         guardMonitor.Init(targetProvider, _input);
         conditionMonitor.OnConditionMet += OnStepComplete;
 
         promptDisplay?.HidePrompt();
-        ShapeTarget firstTarget = targetProvider.GetTargetByName(_data.steps[0].target);
-if (firstTarget != null)
-    firstTarget.transform.rotation = Random.rotation;
         GoToStep(0);
     }
 
+    // ─────────────────────────────────────────────────────────────────────
     void Update()
     {
         if (_step < 0 || _data == null || _step >= _data.steps.Count) return;
@@ -59,29 +66,24 @@ if (firstTarget != null)
         ShapeTarget target = targetProvider.GetTargetByName(_data.steps[_step].target);
         if (target == null) return;
 
-        if (Input.GetKey(KeyCode.Q))
-            target.transform.Rotate(0f,  90f * Time.deltaTime, 0f, Space.World);
-        if (Input.GetKey(KeyCode.E))
-            target.transform.Rotate(0f, -90f * Time.deltaTime, 0f, Space.World);
-
-        if (Input.GetKey(KeyCode.UpArrow))
-            target.transform.Rotate(45f * Time.deltaTime, 0f, 0f, Space.World);
-        if (Input.GetKey(KeyCode.DownArrow))
-            target.transform.Rotate(-45f * Time.deltaTime, 0f, 0f, Space.World);
-            if (Input.GetKey(KeyCode.Z))
-    target.transform.Rotate(0f, 0f,  45f * Time.deltaTime, Space.World); // Z CCW
-if (Input.GetKey(KeyCode.X))
-    target.transform.Rotate(0f, 0f, -45f * Time.deltaTime, Space.World); // Z CW
+        // Y axis
+        if (Input.GetKey(KeyCode.Q)) target.transform.Rotate(0f,  90f * Time.deltaTime, 0f, Space.World);
+        if (Input.GetKey(KeyCode.E)) target.transform.Rotate(0f, -90f * Time.deltaTime, 0f, Space.World);
+        // X axis
+        if (Input.GetKey(KeyCode.UpArrow))   target.transform.Rotate( 45f * Time.deltaTime, 0f, 0f, Space.World);
+        if (Input.GetKey(KeyCode.DownArrow))  target.transform.Rotate(-45f * Time.deltaTime, 0f, 0f, Space.World);
+        // Z axis
+        if (Input.GetKey(KeyCode.Z)) target.transform.Rotate(0f, 0f,  45f * Time.deltaTime, Space.World);
+        if (Input.GetKey(KeyCode.X)) target.transform.Rotate(0f, 0f, -45f * Time.deltaTime, Space.World);
     }
 
+    // ─────────────────────────────────────────────────────────────────────
     void GoToStep(int index)
     {
-        // Mark the step we just FINISHED as complete (green)
-        // _step still holds the old index here, before we update it
+        // Mark the step we just FINISHED as complete (turns it green)
         if (_step >= 0 && _step < _data.steps.Count)
             targetProvider.GetTargetByName(_data.steps[_step].target)?.SetComplete();
 
-        // Now advance to the new step
         _step = index;
 
         // Sequence finished
@@ -93,7 +95,6 @@ if (Input.GetKey(KeyCode.X))
             return;
         }
 
-        // Set up the new active step
         StepData    sd     = _data.steps[_step];
         ShapeTarget target = targetProvider.GetTargetByName(sd.target);
 
@@ -103,8 +104,12 @@ if (Input.GetKey(KeyCode.X))
             return;
         }
 
-       if (_step == 0)
-    target.ResetMaterial();
+        // Only reset material when switching to a NEW shape, not between steps on same shape
+        if (sd.target != _lastTarget)
+        {
+            target.ResetMaterial();
+            _lastTarget = sd.target;
+        }
 
         Transform anchorOrSelf = target.anchor != null ? target.anchor : target.transform;
         arrowController?.SetTarget(anchorOrSelf);
@@ -113,7 +118,6 @@ if (Input.GetKey(KeyCode.X))
         ShowPrompt(sd);
 
         ICondition cond = BuildCondition(sd, target);
-
         if (cond is RotateCondition rc)
             rc.CorrectionNeeded += OnCorrectionNeeded;
 
@@ -121,6 +125,7 @@ if (Input.GetKey(KeyCode.X))
         Debug.Log($"[SequenceManager] Step {_step + 1}/{_data.steps.Count} → {sd.target} [{sd.condition}]");
     }
 
+    // ─────────────────────────────────────────────────────────────────────
     ICondition BuildCondition(StepData sd, ShapeTarget target)
     {
         switch (sd.condition.ToLower())
@@ -159,22 +164,24 @@ if (Input.GetKey(KeyCode.X))
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────
     void ShowPrompt(StepData sd)
     {
         if (!promptDisplay) return;
         string msg = sd.condition.ToLower() switch
         {
             "proximity"    => $"Move close to {sd.target}",
-            "rotate"       => $"Rotate {sd.target} {sd.amount}° {sd.dir}  [Q = CCW / E = CW]",
+            "rotate"       => $"Rotate {sd.target} {sd.amount}° {sd.dir}  [Q=CCW / E=CW]",
             "confirm"      => $"Press SPACE to confirm {sd.target}",
-            "facecamera"   => $"Hold {sd.target} with the green logo facing you at eye level",
-            "seamvertical" => $"Turn {sd.target} until the white seam runs vertically",
-            "equatortilt"  => $"Face the equator ring toward you, then tilt {sd.target} {sd.amount}° upward  [↑↓ to tilt]",
+            "facecamera"   => $"Orient {sd.target} so the green marker faces you  [Q/E/↑↓/Z/X to rotate]",
+            "seamvertical" => $"Turn {sd.target} until the white seam runs vertically  [Q/E/↑↓/Z/X]",
+            "equatortilt"  => $"Face the ring toward you, tilt {sd.target} {sd.amount}° up  [↑↓ to tilt]",
             _              => sd.target
         };
         promptDisplay.ShowPrompt(msg);
     }
 
+    // ─────────────────────────────────────────────────────────────────────
     void OnCorrectionNeeded(bool active)
     {
         arrowController?.SetCorrectionMode(active);
