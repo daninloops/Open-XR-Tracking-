@@ -1,5 +1,5 @@
 using UnityEngine;
-
+using System.Collections;
 public class SequenceManager : MonoBehaviour
 {
     [Header("JSON (file in Assets/Resources/, no extension)")]
@@ -80,10 +80,7 @@ public class SequenceManager : MonoBehaviour
     // ─────────────────────────────────────────────────────────────────────
     void GoToStep(int index)
     {
-        // Mark the step we just FINISHED as complete (turns it green)
-        if (_step >= 0 && _step < _data.steps.Count)
-            targetProvider.GetTargetByName(_data.steps[_step].target)?.SetComplete();
-
+        
         _step = index;
 
         // Sequence finished
@@ -193,8 +190,40 @@ public class SequenceManager : MonoBehaviour
 
     void OnStepComplete()
     {
-        conditionMonitor.StopMonitoring();
-        Debug.Log($"[SequenceManager] Step {_step + 1} complete.");
-        GoToStep(_step + 1);
+       StartCoroutine(HandleStepCompletion());
     }
+    IEnumerator HandleStepCompletion()
+{
+    conditionMonitor.StopMonitoring();
+
+    StepData currentStep = _data.steps[_step];
+
+    ShapeTarget currentTarget =
+        targetProvider.GetTargetByName(currentStep.target);
+
+    if (currentTarget != null)
+        currentTarget.FlashSuccess();
+
+    yield return new WaitForSeconds(1f);
+
+    bool isLastStepForRock = true;
+
+    for (int i = _step + 1; i < _data.steps.Count; i++)
+    {
+        if (_data.steps[i].target == currentStep.target)
+        {
+            isLastStepForRock = false;
+            break;
+        }
+    }
+
+    if (isLastStepForRock && currentTarget != null)
+    {
+        currentTarget.SetComplete();
+    }
+
+    Debug.Log($"[SequenceManager] Step {_step + 1} complete.");
+
+    GoToStep(_step + 1);
+}
 }
