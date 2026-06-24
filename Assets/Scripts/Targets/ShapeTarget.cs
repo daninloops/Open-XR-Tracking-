@@ -1,58 +1,67 @@
 using UnityEngine;
 
-/// <summary>
-/// Attach to CubeA, CubeB, SphereC.
-/// Holds the Anchor reference and manages material state.
-/// </summary>
 public class ShapeTarget : MonoBehaviour
 {
-    [Header("Anchor (child empty object, positioned above shape)")]
+    [Header("Anchor")]
     public Transform anchor;
 
     [Header("Materials")]
     public Material defaultMaterial;
-    public Material errorMaterial;     // red  – guard flash
-    public Material completeMaterial;  // green – step done
+    public Material errorMaterial;
+    public Material completeMaterial;
 
     private Renderer _rend;
-    private bool     _flashing;
-    private float    _flashTimer;
-    private const float FlashDuration = 0.25f;
 
-    void Awake()
+    private bool _lockedGreen = false;
+
+    private void Awake()
     {
         _rend = GetComponent<Renderer>();
         ApplyMaterial(defaultMaterial);
     }
 
-    void Update()
-    {
-        if (!_flashing) return;
-        _flashTimer -= Time.deltaTime;
-        if (_flashTimer <= 0f)
-        {
-            _flashing = false;
-            ApplyMaterial(defaultMaterial);
-        }
-    }
-
     public void FlashError()
     {
-        ApplyMaterial(errorMaterial);
-        _flashing   = true;
-        _flashTimer = FlashDuration;
+        if (_lockedGreen) return;
+
+        StopAllCoroutines();
+        StartCoroutine(FlashMaterial(errorMaterial, 0.75f));
     }
 
-public void SetComplete()
-{
-    Debug.Log($"[ShapeTarget] SetComplete called on {gameObject.name}, material={completeMaterial?.name}");
-    ApplyMaterial(completeMaterial);
-    Debug.Log($"[ShapeTarget] After apply, renderer material={_rend?.material?.name}");
-}
-    public void ResetMaterial() { _flashing = false; ApplyMaterial(defaultMaterial); }
-
-    private void ApplyMaterial(Material m)
+    public void FlashSuccess()
     {
-        if (_rend && m) _rend.material = m;
+        StopAllCoroutines();
+        StartCoroutine(FlashMaterial(completeMaterial, 1f));
+    }
+
+    public void SetComplete()
+    {
+        _lockedGreen = true;
+        StopAllCoroutines();
+        ApplyMaterial(completeMaterial);
+    }
+
+    public void ResetMaterial()
+    {
+        if (_lockedGreen) return;
+
+        StopAllCoroutines();
+        ApplyMaterial(defaultMaterial);
+    }
+
+    private System.Collections.IEnumerator FlashMaterial(Material mat, float duration)
+    {
+        ApplyMaterial(mat);
+
+        yield return new WaitForSeconds(duration);
+
+        if (!_lockedGreen)
+            ApplyMaterial(defaultMaterial);
+    }
+
+    private void ApplyMaterial(Material mat)
+    {
+        if (_rend != null && mat != null)
+            _rend.material = mat;
     }
 }
