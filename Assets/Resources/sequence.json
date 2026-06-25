@@ -1,23 +1,9 @@
 {
   "steps": [
-    { "target": "Rock1", "condition": "facecamera" },
-    { "target": "Rock1", "condition": "rotate", "dir": "CW", "amount": 90 },
-    { "target": "Rock1", "condition": "seamvertical" },
-    { "target": "Rock1", "condition": "equatortilt", "amount": 45 },
-
-    { "target": "Rock2", "condition": "facecamera" },
-    { "target": "Rock2", "condition": "rotate", "dir": "CW", "amount": 90 },
-    { "target": "Rock2", "condition": "seamvertical" },
-    { "target": "Rock2", "condition": "equatortilt", "amount": 45 },
-
-    { "target": "Rock3", "condition": "facecamera" },
-    { "target": "Rock3", "condition": "rotate", "dir": "CW", "amount": 90 },
-    { "target": "Rock3", "condition": "seamvertical" },
-    { "target": "Rock3", "condition": "equatortilt", "amount": 45 },
-
-    { "target": "Rock4", "condition": "facecamera" },
-    { "target": "Rock4", "condition": "rotate", "dir": "CW", "amount": 90 },
-    { "target": "Rock4", "condition": "seamvertical" },
-    { "target": "Rock4", "condition": "equatortilt", "amount": 45 }
+    { "target": "Screw", "condition": "facecamera" },
+    { "target": "Screw", "condition": "rotate", "dir": "CW",  "amount": 90 },
+    { "target": "Screw", "condition": "rotate", "dir": "CCW", "amount": 90 },
+    { "target": "Screw", "condition": "seamvertical" },
+    { "target": "Screw", "condition": "equatortilt", "amount": 45 }
   ]
 }

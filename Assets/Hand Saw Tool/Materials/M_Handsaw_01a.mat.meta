@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 611f5423ae7b5cd42b64be2aebc69fff
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 338192
+  packageName: Hand Saw Tool
+  packageVersion: 1.0
+  assetPath: Assets/Hand Saw Tool/Materials/M_Handsaw_01a.mat
+  uploadId: 800486

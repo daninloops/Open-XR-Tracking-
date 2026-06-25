@@ -181,11 +181,20 @@ public class SequenceManager : MonoBehaviour
     // ─────────────────────────────────────────────────────────────────────
     void OnCorrectionNeeded(bool active)
     {
-        arrowController?.SetCorrectionMode(active);
-        if (active)
-            promptDisplay?.ShowPrompt("⚠  Wrong direction!  Go the other way!");
-        else if (_step < _data.steps.Count)
-            ShowPrompt(_data.steps[_step]);
+       arrowController?.SetCorrectionMode(active);
+
+    ShapeTarget target =
+        targetProvider.GetTargetByName(_data.steps[_step].target);
+
+    if (active)
+    {
+        target?.FlashError();
+        promptDisplay?.ShowPrompt("⚠  Wrong direction!  Go the other way!");
+    }
+    else if (_step < _data.steps.Count)
+    {
+        ShowPrompt(_data.steps[_step]);
+    }
     }
 
     void OnStepComplete()
