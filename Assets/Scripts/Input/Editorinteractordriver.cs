@@ -15,7 +15,8 @@ public class EditorInteractorDriver : MonoBehaviour, IInteractorInput
 
     public Vector3 InteractorPosition => transform.position;
     public bool    ConfirmPressed     => Input.GetKeyDown(KeyCode.Space);
-    public Vecotr3 InteractorVelocity=>_velocity;
+    public Vector3 InteractorVelocity=>_velocity;
+    public bool GripPressed => Input.GetKey(KeyCode.LeftShift);
 
     void Update()
     {
@@ -27,13 +28,14 @@ public class EditorInteractorDriver : MonoBehaviour, IInteractorInput
     
         float h  = Input.GetAxis("Horizontal");          // A / D
         float v  = Input.GetAxis("Vertical");            // W / S
-        float up = Input.GetKey(KeyCode.E) ?  1f :
-                   Input.GetKey(KeyCode.Q) ? -1f : 0f;
-
+        float up = Input.GetKey(KeyCode.R) ? 1f :
+           Input.GetKey(KeyCode.F) ? -1f : 0f;
 
         Vector3 move = new Vector3(h, up * verticalSpeed, v)
                        * moveSpeed * Time.deltaTime;
+        Debug.Log($"Move: {move}");
         transform.Translate(move, Space.World);
+        Debug.Log(transform.position);
     }
 
 }

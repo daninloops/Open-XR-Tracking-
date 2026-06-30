@@ -1,9 +1,6 @@
 {
   "steps": [
-    { "target": "Screw", "condition": "facecamera" },
-    { "target": "Screw", "condition": "rotate", "dir": "CW",  "amount": 90 },
-    { "target": "Screw", "condition": "rotate", "dir": "CCW", "amount": 90 },
-    { "target": "Screw", "condition": "seamvertical" },
-    { "target": "Screw", "condition": "equatortilt", "amount": 45 }
+    { "target": "Screw", "condition": "tighten", "amount": 360 },
+    { "target": "Screw", "condition": "loosen", "amount": 360 }
   ]
 }

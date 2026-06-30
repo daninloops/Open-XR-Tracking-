@@ -7,7 +7,8 @@ using UnityEngine;
 public interface IInteractorInput
 {
     Vector3 InteractorPosition { get; }
-    Vecotr InteractorVelocity{get;}
+    Vector3 InteractorVelocity{get;}
     bool    ConfirmPressed     { get; }
+    bool GripPressed{get;}
 }
 
