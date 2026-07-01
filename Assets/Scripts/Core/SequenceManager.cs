@@ -288,6 +288,45 @@ case "capclose":
                 cond.OnCorrectAction += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
                 return cond;
             }
+            case "labelup":
+{
+    var cond = new LabelUpCondition(target.transform);
+    cond.OnWrongAction  += msg => { arrowController.SetCorrectionMode(true);  promptDisplay.ShowPrompt(msg); };
+    cond.OnCorrectAction += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
+    return cond;
+}
+ 
+case "flatsurface":
+{
+    var cond = new FlatSurfaceCondition(target.transform);
+    cond.OnWrongAction  += msg => { arrowController.SetCorrectionMode(true);  promptDisplay.ShowPrompt(msg); };
+    cond.OnCorrectAction += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
+    return cond;
+}
+ 
+case "slotinsert":
+{
+    Transform slotTarget = target.transform.Find("SlotTarget");
+    if (slotTarget == null)
+        Debug.LogError("[SequenceManager] No SlotTarget child on " + target.name);
+    Transform hand = (interactorInputMono as MonoBehaviour).transform;
+    var cond = new SlotInsertCondition(target.transform, slotTarget, hand);
+    cond.OnWrongAction  += msg => { arrowController.SetCorrectionMode(true);  promptDisplay.ShowPrompt(msg); };
+    cond.OnCorrectAction += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
+    return cond;
+}
+ 
+case "shelfplace":
+{
+    Transform shelfZone = target.transform.Find("ShelfZone");
+    if (shelfZone == null)
+        Debug.LogError("[SequenceManager] No ShelfZone child on " + target.name);
+    var cond = new ShelfPlacementCondition(target.transform, shelfZone);
+    cond.OnWrongAction  += msg => { arrowController.SetCorrectionMode(true);  promptDisplay.ShowPrompt(msg); };
+    cond.OnCorrectAction += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
+    return cond;
+}
+
 
             default:
                 Debug.LogWarning("[SequenceManager] Unknown condition: " + sd.condition);
@@ -315,6 +354,11 @@ case "capclose":
             case "capopen":      msg = "Grip the cap and twist COUNTER-CLOCKWISE to open  [Q]"; break;
             case "capclose":     msg = "Grip the cap and twist CLOCKWISE to close  [E]"; break;
             case "handshake":    msg = "Approach " + sd.target + " from the front and extend your hand."; break;
+            
+            case "labelup":     msg = "Rotate " + sd.target + " so the label faces upward  [Up/Down arrows]"; break;
+            case "flatsurface": msg = "Tilt " + sd.target + " until its base is flat  [Up/Down arrows]"; break;
+            case "slotinsert":  msg = "Align " + sd.target + " with the slot then slide it in  [WASD to move]"; break;
+            case "shelfplace":  msg = "Place " + sd.target + " upright on the shelf  [WASD to move]"; break;
             default:             msg = sd.target; break;
         }
         promptDisplay.ShowPrompt(msg);
