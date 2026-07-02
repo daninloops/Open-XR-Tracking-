@@ -1,17 +1,14 @@
 {
   "steps": [
-    { "target": "Screw",    "condition": "griphold",   "amount": 1 },
-    { "target": "Screw",    "condition": "tighten",    "amount": 360 },
-    { "target": "Screw",    "condition": "loosen",     "amount": 360 },
-    { "target": "Bottle",   "condition": "capopen",    "amount": 360 },
-    { "target": "Bottle",   "condition": "capclose",   "amount": 360 },
-    { "target": "Bottle",   "condition": "labelup" },
-    { "target": "Box",      "condition": "flatsurface" },
-    { "target": "Key",      "condition": "slotinsert" },
-    { "target": "Book",     "condition": "shelfplace" },
-    { "target": "Screw",    "condition": "rotate",     "dir": "CW",  "amount": 90 },
-    { "target": "Screw",    "condition": "rotate",     "dir": "CCW", "amount": 90 },
-    { "target": "Dial",     "condition": "rotate",     "dir": "CW",  "amount": 180 },
-    { "target": "Valve",    "condition": "tighten",    "amount": 180 }
+    { "target": "Screw", "condition": "griphold",   "amount": 1 },
+    { "target": "Screw", "condition": "screwalign" },
+    { "target": "Screw", "condition": "tighten",    "amount": 360 },
+    { "target": "Screw", "condition": "loosen",     "amount": 360 },
+    { "target": "Bottle","condition": "labelup" },
+    { "target": "Bottle","condition": "capopen", "amount": 360 },
+{ "target": "Bottle","condition": "capclose","amount": 360 },
+{ "target": "Box", "condition": "flatsurface" },
+{ "target": "Key", "condition": "slotinsert" },
+{ "target": "Book", "condition": "shelfplace" }
   ]
 }

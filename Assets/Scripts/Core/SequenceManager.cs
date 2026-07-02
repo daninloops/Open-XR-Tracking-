@@ -19,10 +19,10 @@ public class SequenceManager : MonoBehaviour
     [Header("Interactor (EditorInteractorDriver or XRInteractorAdapter)")]
     public MonoBehaviour interactorInputMono;
 
-    private IInteractorInput _input;
-    private SequenceData     _data;
-    private int              _step       = -1;
-    private string           _lastTarget = "";
+    private IInteractorInput     _input;
+    private SequenceData         _data;
+    private int                  _step       = -1;
+    private string               _lastTarget = "";
     private TwistActionCondition _activeTwist;
 
     // ─────────────────────────────────────────────────────────────────────
@@ -52,12 +52,6 @@ public class SequenceManager : MonoBehaviour
             return;
         }
 
-       // foreach (StepData step in _data.steps)
-       // {
-        //    ShapeTarget t = targetProvider.GetTargetByName(step.target);
-         //   if (t != null) t.transform.rotation = Random.rotation;
-       // }
-
         guardMonitor.Init(targetProvider, _input);
         conditionMonitor.OnConditionMet += OnStepComplete;
         promptDisplay.HidePrompt();
@@ -66,42 +60,66 @@ public class SequenceManager : MonoBehaviour
 
     // ─────────────────────────────────────────────────────────────────────
     void Update()
-{
-    if (_step < 0 || _step >= _data.steps.Count) return;
-
-    ShapeTarget target = targetProvider.GetTargetByName(_data.steps[_step].target);
-    if (target == null) return;
-
-    string condition = _data.steps[_step].condition.ToLower();
-    bool isTwistAction = condition == "tighten" || condition == "loosen" || 
-                          condition == "capopen" || condition == "capclose" || 
-                          condition == "screwaction";
-
-    if (isTwistAction)
     {
-        // Rotate the INTERACTOR (simulates wrist twist)
-        Transform hand = (interactorInputMono as MonoBehaviour).transform;
-        if (Input.GetKey(KeyCode.E)) hand.Rotate(0, -90 * Time.deltaTime, 0, Space.World);
-        if (Input.GetKey(KeyCode.Q)) hand.Rotate(0,  90 * Time.deltaTime, 0, Space.World);
+        if (_step < 0 || _step >= _data.steps.Count) return;
+
+        ShapeTarget target = targetProvider.GetTargetByName(_data.steps[_step].target);
+        if (target == null) return;
+
+        string condition = _data.steps[_step].condition.ToLower();
+
+        bool isTwistAction = condition == "tighten"     || condition == "loosen"  ||
+                             condition == "capopen"      || condition == "capclose" ||
+                             condition == "screwaction";
+
+        bool isOrientationAction = condition == "facecamera"  || condition == "seamvertical" ||
+                                   condition == "equatortilt" || condition == "labelup"      ||
+                                   condition == "flatsurface" || condition == "screwalign";
+
+        bool isPositionAction = condition == "slotinsert" || condition == "shelfplace" ||
+                                condition == "proximity"  || condition == "griphold";
+
+        if (isTwistAction)
+        {
+            // Q/E rotate the INTERACTOR (wrist twist)
+            // E = clockwise (negative Y in Unity), Q = counter-clockwise (positive Y)
+            Transform hand = (interactorInputMono as MonoBehaviour).transform;
+            if (Input.GetKey(KeyCode.E)) hand.Rotate(0, -90f * Time.deltaTime, 0, Space.World); // CW
+            if (Input.GetKey(KeyCode.Q)) hand.Rotate(0,  90f * Time.deltaTime, 0, Space.World); // CCW
+
+            // Visually rotate the object to match twist progress
+            // Negate AccumulatedDegrees so CW twist rotates the mesh CW visually
+            if (_activeTwist != null)
+            {
+                float targetY = -_activeTwist.AccumulatedDegrees;
+                Vector3 e = target.transform.localEulerAngles;
+                target.transform.localRotation = Quaternion.Euler(e.x, targetY, e.z);
+            }
+        }
+        else if (isOrientationAction)
+        {
+            // Q/E/Z/X rotate the TARGET object
+            // E = clockwise, Q = counter-clockwise (matches real-world convention)
+            if (Input.GetKey(KeyCode.E)) target.transform.Rotate(0,  90f * Time.deltaTime, 0, Space.World); // CW
+            if (Input.GetKey(KeyCode.Q)) target.transform.Rotate(0, -90f * Time.deltaTime, 0, Space.World); // CCW
+            if (Input.GetKey(KeyCode.Z)) target.transform.Rotate(0, 0,  45f * Time.deltaTime, Space.World);
+            if (Input.GetKey(KeyCode.X)) target.transform.Rotate(0, 0, -45f * Time.deltaTime, Space.World);
+        }
+        else if (isPositionAction)
+        {
+            // Interactor moves freely with WASD — no extra rotation needed here
+        }
+        else
+        {
+            // Default for any other condition type
+            if (Input.GetKey(KeyCode.E))         target.transform.Rotate(0,  90f * Time.deltaTime, 0, Space.World);
+            if (Input.GetKey(KeyCode.Q))         target.transform.Rotate(0, -90f * Time.deltaTime, 0, Space.World);
+            if (Input.GetKey(KeyCode.UpArrow))   target.transform.Rotate( 45f * Time.deltaTime, 0, 0, Space.World);
+            if (Input.GetKey(KeyCode.DownArrow)) target.transform.Rotate(-45f * Time.deltaTime, 0, 0, Space.World);
+            if (Input.GetKey(KeyCode.Z))         target.transform.Rotate(0, 0,  45f * Time.deltaTime, Space.World);
+            if (Input.GetKey(KeyCode.X))         target.transform.Rotate(0, 0, -45f * Time.deltaTime, Space.World);
+        }
     }
-    // Visually rotate the screw to match accumulated twist progress
-if (_activeTwist != null)
-{
-    float targetY = _activeTwist.AccumulatedDegrees;
-    Vector3 e = target.transform.localEulerAngles;
-    target.transform.localRotation = Quaternion.Euler(e.x, targetY, e.z);
-}
-    else
-    {
-        // Rotate the TARGET (orientation conditions)
-        if (Input.GetKey(KeyCode.Q)) target.transform.Rotate(0,  90 * Time.deltaTime, 0, Space.World);
-        if (Input.GetKey(KeyCode.E)) target.transform.Rotate(0, -90 * Time.deltaTime, 0, Space.World);
-        if (Input.GetKey(KeyCode.UpArrow))   target.transform.Rotate( 45 * Time.deltaTime, 0, 0, Space.World);
-        if (Input.GetKey(KeyCode.DownArrow)) target.transform.Rotate(-45 * Time.deltaTime, 0, 0, Space.World);
-        if (Input.GetKey(KeyCode.Z))         target.transform.Rotate(0, 0,  45 * Time.deltaTime, Space.World);
-        if (Input.GetKey(KeyCode.X))         target.transform.Rotate(0, 0, -45 * Time.deltaTime, Space.World);
-    }
-}
 
     // ─────────────────────────────────────────────────────────────────────
     void GoToStep(int index)
@@ -191,13 +209,12 @@ if (_activeTwist != null)
 
             case "screwaction":
             {
-                Transform screwHead = target.transform.Find("ScrewHead") ?? target.transform.Find("Anchor") ?? target.transform;
-                Transform hand      = (interactorInputMono as MonoBehaviour).transform;
-
-                ScrewActionCondition screw = new ScrewActionCondition(
-                    screwHead, hand, 3f,
+                Transform screwHead = target.transform.Find("ScrewHead")
+                                   ?? target.transform.Find("Anchor")
+                                   ?? target.transform;
+                Transform hand = (interactorInputMono as MonoBehaviour).transform;
+                ScrewActionCondition screw = new ScrewActionCondition(screwHead, hand, 3f,
                     sd.amount > 0 ? sd.amount : 360f);
-
                 screw.OnWrongAction        += msg => { arrowController.SetCorrectionMode(true);  target.FlashError(); promptDisplay.ShowPrompt(msg); };
                 screw.OnGripReacquired     += ()  => { arrowController.SetCorrectionMode(false); target.ResetMaterial(); ShowPrompt(_data.steps[_step]); };
                 screw.OnDirectionCorrected += ()  => { arrowController.SetCorrectionMode(false); target.ResetMaterial(); ShowPrompt(_data.steps[_step]); };
@@ -207,78 +224,78 @@ if (_activeTwist != null)
             case "griphold":
             {
                 Transform gripPoint = target.anchor != null ? target.anchor : target.transform;
-
                 GripHoldCondition grip = new GripHoldCondition(gripPoint, _input, 3f, 1f);
-
                 grip.OnWrongAction   += msg => { arrowController.SetCorrectionMode(true);  target.FlashError(); promptDisplay.ShowPrompt(msg); };
                 grip.OnCorrectAction += ()  => { arrowController.SetCorrectionMode(false); target.ResetMaterial(); ShowPrompt(_data.steps[_step]); };
                 return grip;
             }
-             
-case "tighten":
-{
-    Transform anchor = target.transform.Find("Anchor") ?? target.transform;
-    Transform hand   = (interactorInputMono as MonoBehaviour).transform;
-    var cond = new TwistActionCondition(
-        anchor, hand, target.transform,
-        TwistActionCondition.TwistDirection.CW,
-        sd.amount > 0 ? sd.amount : 360f, 3f);
-    cond.OnWrongAction        += msg => { arrowController.SetCorrectionMode(true);  promptDisplay.ShowPrompt(msg); };
-    cond.OnGripReacquired     += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
-    cond.OnDirectionCorrected += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
-    _activeTwist = cond;
-    return cond;
-}
- 
-case "loosen":
-{
-    Transform anchor = target.transform.Find("Anchor") ?? target.transform;
-    Transform hand   = (interactorInputMono as MonoBehaviour).transform;
-    var cond = new TwistActionCondition(
-        anchor, hand, target.transform,
-        TwistActionCondition.TwistDirection.CCW,
-        sd.amount > 0 ? sd.amount : 360f, 3f);
-    cond.OnWrongAction        += msg => { arrowController.SetCorrectionMode(true);  promptDisplay.ShowPrompt(msg); };
-    cond.OnGripReacquired     += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
-    cond.OnDirectionCorrected += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
-    _activeTwist = cond;
-    return cond;
-}
- 
-case "capopen":
-{
-    Transform anchor = target.transform.Find("CapAnchor") ?? target.transform;
-    Transform hand   = (interactorInputMono as MonoBehaviour).transform;
-    var cond = new TwistActionCondition(
-        anchor, hand, target.transform,
-        TwistActionCondition.TwistDirection.CCW,
-        sd.amount > 0 ? sd.amount : 360f, 3f);
-    cond.OnWrongAction        += msg => { arrowController.SetCorrectionMode(true);  promptDisplay.ShowPrompt(msg); };
-    cond.OnGripReacquired     += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
-    cond.OnDirectionCorrected += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
-    _activeTwist = cond;
-    return cond;
-}
- 
-case "capclose":
-{
-    Transform anchor = target.transform.Find("CapAnchor") ?? target.transform;
-    Transform hand   = (interactorInputMono as MonoBehaviour).transform;
-    var cond = new TwistActionCondition(
-        anchor, hand, target.transform,
-        TwistActionCondition.TwistDirection.CW,
-        sd.amount > 0 ? sd.amount : 360f, 3f);
-    cond.OnWrongAction        += msg => { arrowController.SetCorrectionMode(true);  promptDisplay.ShowPrompt(msg); };
-    cond.OnGripReacquired     += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
-    cond.OnDirectionCorrected += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
-    _activeTwist = cond;
-    return cond;
-}
- 
 
+            case "tighten":
+            {
+                Transform anchor = target.transform.Find("Anchor") ?? target.transform;
+                Transform hand   = (interactorInputMono as MonoBehaviour).transform;
+                var cond = new TwistActionCondition(anchor, hand, target.transform,
+                    TwistActionCondition.TwistDirection.CW,
+                    sd.amount > 0 ? sd.amount : 360f, 3f);
+                cond.OnWrongAction        += msg => { arrowController.SetCorrectionMode(true);  promptDisplay.ShowPrompt(msg); };
+                cond.OnGripReacquired     += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
+                cond.OnDirectionCorrected += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
+                _activeTwist = cond;
+                return cond;
+            }
 
+            case "loosen":
+            {
+                Transform anchor = target.transform.Find("Anchor") ?? target.transform;
+                Transform hand   = (interactorInputMono as MonoBehaviour).transform;
+                var cond = new TwistActionCondition(anchor, hand, target.transform,
+                    TwistActionCondition.TwistDirection.CCW,
+                    sd.amount > 0 ? sd.amount : 360f, 3f);
+                cond.OnWrongAction        += msg => { arrowController.SetCorrectionMode(true);  promptDisplay.ShowPrompt(msg); };
+                cond.OnGripReacquired     += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
+                cond.OnDirectionCorrected += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
+                _activeTwist = cond;
+                return cond;
+            }
 
+            case "capopen":
+            {
+                Transform anchor = target.transform.Find("CapAnchor") ?? target.transform;
+                Transform hand   = (interactorInputMono as MonoBehaviour).transform;
+                var cond = new TwistActionCondition(anchor, hand, target.transform,
+                    TwistActionCondition.TwistDirection.CCW,
+                    sd.amount > 0 ? sd.amount : 360f, 3f);
+                cond.OnWrongAction        += msg => { arrowController.SetCorrectionMode(true);  promptDisplay.ShowPrompt(msg); };
+                cond.OnGripReacquired     += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
+                cond.OnDirectionCorrected += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
+                _activeTwist = cond;
+                return cond;
+            }
 
+            case "capclose":
+            {
+                Transform anchor = target.transform.Find("CapAnchor") ?? target.transform;
+                Transform hand   = (interactorInputMono as MonoBehaviour).transform;
+                var cond = new TwistActionCondition(anchor, hand, target.transform,
+                    TwistActionCondition.TwistDirection.CW,
+                    sd.amount > 0 ? sd.amount : 360f, 3f);
+                cond.OnWrongAction        += msg => { arrowController.SetCorrectionMode(true);  promptDisplay.ShowPrompt(msg); };
+                cond.OnGripReacquired     += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
+                cond.OnDirectionCorrected += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
+                _activeTwist = cond;
+                return cond;
+            }
+
+            case "screwalign":
+            {
+                Transform slotMarker = target.transform.Find("SlotMarker");
+                if (slotMarker == null)
+                    Debug.LogError("[SequenceManager] No SlotMarker child on " + target.name);
+                var cond = new ScrewAlignCondition(slotMarker);
+                cond.OnWrongAction  += msg => { arrowController.SetCorrectionMode(true);  promptDisplay.ShowPrompt(msg); };
+                cond.OnCorrectAction += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
+                return cond;
+            }
 
             case "handshake":
             {
@@ -288,45 +305,46 @@ case "capclose":
                 cond.OnCorrectAction += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
                 return cond;
             }
-            case "labelup":
-{
-    var cond = new LabelUpCondition(target.transform);
-    cond.OnWrongAction  += msg => { arrowController.SetCorrectionMode(true);  promptDisplay.ShowPrompt(msg); };
-    cond.OnCorrectAction += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
-    return cond;
-}
- 
-case "flatsurface":
-{
-    var cond = new FlatSurfaceCondition(target.transform);
-    cond.OnWrongAction  += msg => { arrowController.SetCorrectionMode(true);  promptDisplay.ShowPrompt(msg); };
-    cond.OnCorrectAction += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
-    return cond;
-}
- 
-case "slotinsert":
-{
-    Transform slotTarget = target.transform.Find("SlotTarget");
-    if (slotTarget == null)
-        Debug.LogError("[SequenceManager] No SlotTarget child on " + target.name);
-    Transform hand = (interactorInputMono as MonoBehaviour).transform;
-    var cond = new SlotInsertCondition(target.transform, slotTarget, hand);
-    cond.OnWrongAction  += msg => { arrowController.SetCorrectionMode(true);  promptDisplay.ShowPrompt(msg); };
-    cond.OnCorrectAction += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
-    return cond;
-}
- 
-case "shelfplace":
-{
-    Transform shelfZone = target.transform.Find("ShelfZone");
-    if (shelfZone == null)
-        Debug.LogError("[SequenceManager] No ShelfZone child on " + target.name);
-    var cond = new ShelfPlacementCondition(target.transform, shelfZone);
-    cond.OnWrongAction  += msg => { arrowController.SetCorrectionMode(true);  promptDisplay.ShowPrompt(msg); };
-    cond.OnCorrectAction += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
-    return cond;
-}
 
+            case "labelup":
+            {
+                var cond = new LabelUpCondition(target.transform);
+                cond.OnWrongAction  += msg => { arrowController.SetCorrectionMode(true);  promptDisplay.ShowPrompt(msg); };
+                cond.OnCorrectAction += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
+                return cond;
+            }
+
+            case "flatsurface":
+            {
+                var cond = new FlatSurfaceCondition(target.transform);
+                cond.OnWrongAction  += msg => { arrowController.SetCorrectionMode(true);  promptDisplay.ShowPrompt(msg); };
+                cond.OnCorrectAction += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
+                return cond;
+            }
+
+            case "slotinsert":
+            {
+                Transform slotTarget = target.transform.Find("SlotTarget");
+                if (slotTarget == null)
+                    Debug.LogError("[SequenceManager] No SlotTarget child on " + target.name);
+                Transform hand = (interactorInputMono as MonoBehaviour).transform;
+                var cond = new SlotInsertCondition(slotTarget, hand);
+                cond.OnWrongAction  += msg => { arrowController.SetCorrectionMode(true);  promptDisplay.ShowPrompt(msg); };
+                cond.OnCorrectAction += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
+                return cond;
+            }
+
+            case "shelfplace":
+            {
+                Transform shelfZone = target.transform.Find("ShelfZone");
+                if (shelfZone == null)
+                    Debug.LogError("[SequenceManager] No ShelfZone child on " + target.name);
+                Transform hand = (interactorInputMono as MonoBehaviour).transform;
+                var cond = new ShelfPlacementCondition(shelfZone, hand);
+                cond.OnWrongAction  += msg => { arrowController.SetCorrectionMode(true);  promptDisplay.ShowPrompt(msg); };
+                cond.OnCorrectAction += ()  => { arrowController.SetCorrectionMode(false); ShowPrompt(_data.steps[_step]); };
+                return cond;
+            }
 
             default:
                 Debug.LogWarning("[SequenceManager] Unknown condition: " + sd.condition);
@@ -347,18 +365,18 @@ case "shelfplace":
             case "facecamera":   msg = "Face " + sd.target + " towards yourself."; break;
             case "seamvertical": msg = "Rotate until the seam is vertical."; break;
             case "equatortilt":  msg = "Tilt " + sd.target + " by " + sd.amount + " degrees."; break;
-            case "screwaction":  msg = "Grip the screw head and twist CLOCKWISE  [move close + E]"; break;
+            case "screwaction":  msg = "Grip the screw head and twist CLOCKWISE  [E]"; break;
             case "griphold":     msg = "Move close to " + sd.target + " and hold LEFT SHIFT to grip."; break;
             case "tighten":      msg = "Grip " + sd.target + " and twist CLOCKWISE  [E]"; break;
             case "loosen":       msg = "Grip " + sd.target + " and twist COUNTER-CLOCKWISE  [Q]"; break;
             case "capopen":      msg = "Grip the cap and twist COUNTER-CLOCKWISE to open  [Q]"; break;
             case "capclose":     msg = "Grip the cap and twist CLOCKWISE to close  [E]"; break;
+            case "screwalign":   msg = "Rotate " + sd.target + " to align the slot horizontally  [E=CW / Q=CCW]"; break;
             case "handshake":    msg = "Approach " + sd.target + " from the front and extend your hand."; break;
-            
-            case "labelup":     msg = "Rotate " + sd.target + " so the label faces upward  [Up/Down arrows]"; break;
-            case "flatsurface": msg = "Tilt " + sd.target + " until its base is flat  [Up/Down arrows]"; break;
-            case "slotinsert":  msg = "Align " + sd.target + " with the slot then slide it in  [WASD to move]"; break;
-            case "shelfplace":  msg = "Place " + sd.target + " upright on the shelf  [WASD to move]"; break;
+            case "labelup":      msg = "Rotate " + sd.target + " so the label faces UP  [E=CW / Q=CCW / Z/X]"; break;
+            case "flatsurface":  msg = "Tilt " + sd.target + " flat with base facing down  [Q/E/Z/X]"; break;
+            case "slotinsert":   msg = "Align hand with slot then slide in  [Q/E to rotate, WASD to move]"; break;
+            case "shelfplace":   msg = "Move to the shelf zone  [WASD to move]"; break;
             default:             msg = sd.target; break;
         }
         promptDisplay.ShowPrompt(msg);
@@ -415,6 +433,7 @@ case "shelfplace":
             else                   currentTarget.ResetMaterial();
         }
 
+        _activeTwist = null;
         arrowController?.SetCorrectionMode(false);
         Debug.Log("[SequenceManager] Step " + (_step + 1) + " Complete.");
         GoToStep(_step + 1);

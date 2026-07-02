@@ -1,95 +1,72 @@
 using UnityEngine;
 
 /// <summary>
-/// Condition: "slot insertion"
-/// Two checks must pass simultaneously:
-/// 1. Object is correctly oriented (forward axis aligns with slot's forward axis)
-/// 2. Object is moved forward into the slot (close enough to slot target position)
-///
-/// This simulates inserting a key into a lock, a plug into a socket, etc.
-/// The slot is represented by a child empty GameObject on the target named "SlotTarget".
+/// FIXED: checks INTERACTOR position/orientation vs SlotTarget anchor.
+/// Inspector changes to the target object no longer trigger this.
+/// Check 1: interactor forward aligns with slot forward (Q/E to rotate interactor)
+/// Check 2: interactor is within insertRadius of SlotTarget (WASD to move)
 /// </summary>
 public class SlotInsertCondition : ICondition
 {
-    private readonly Transform _object;          // the thing being inserted
-    private readonly Transform _slotTarget;      // where it should end up
-    private readonly Transform _interactor;      // hand driving the object
-    private readonly float     _positionRadius;  // how close counts as inserted
-    private readonly float     _alignThreshold;  // dot product for correct orientation
+    private readonly Transform _slotTarget;
+    private readonly Transform _interactor;
+    private readonly float     _insertRadius;
+    private readonly float     _alignThreshold;
 
-    private bool _wrongOrientation;
+    private bool _wrongAlign;
     private bool _wrongPosition;
 
     public event System.Action<string> OnWrongAction;
     public event System.Action         OnCorrectAction;
 
     public SlotInsertCondition(
-        Transform object_,
         Transform slotTarget,
         Transform interactor,
-        float     positionRadius  = 0.15f,
-        float     alignThreshold  = 0.95f)
+        float     insertRadius   = 0.3f,
+        float     alignThreshold = 0.85f)
     {
-        _object          = object_;
-        _slotTarget      = slotTarget;
-        _interactor      = interactor;
-        _positionRadius  = positionRadius;
-        _alignThreshold  = alignThreshold;
+        _slotTarget     = slotTarget;
+        _interactor     = interactor;
+        _insertRadius   = insertRadius;
+        _alignThreshold = alignThreshold;
     }
 
-    public void OnStepBegin()
-    {
-        _wrongOrientation = false;
-        _wrongPosition    = false;
-    }
-
-    public void OnStepEnd()
-    {
-        OnWrongAction  = null;
-        OnCorrectAction = null;
-    }
+    public void OnStepBegin() { _wrongAlign = false; _wrongPosition = false; }
+    public void OnStepEnd()   { OnWrongAction = null; OnCorrectAction = null; }
 
     public bool Check()
     {
-        if (_object == null || _slotTarget == null) return false;
+        if (_slotTarget == null || _interactor == null) return false;
 
-        // Check 1: orientation — object's forward must align with slot's forward
-        float alignDot    = Vector3.Dot(_object.forward, _slotTarget.forward);
-        bool  correctAlign = alignDot >= _alignThreshold;
+        // Check 1: interactor approaching from correct direction
+        float alignDot = Vector3.Dot(_interactor.forward, _slotTarget.forward);
+        bool  alignOk  = alignDot >= _alignThreshold;
 
-        if (!correctAlign)
+        if (!alignOk)
         {
-            if (!_wrongOrientation)
+            if (!_wrongAlign)
             {
-                _wrongOrientation = true;
-                OnWrongAction?.Invoke("Align the object with the slot before inserting!");
+                _wrongAlign = true;
+                OnWrongAction?.Invoke("Align your hand with the slot direction  [Q/E to rotate interactor]");
             }
             return false;
         }
-        else if (_wrongOrientation)
-        {
-            _wrongOrientation = false;
-            OnCorrectAction?.Invoke();
-        }
+        else if (_wrongAlign) { _wrongAlign = false; OnCorrectAction?.Invoke(); }
 
-        // Check 2: position — object must be close to the slot target position
-        float dist         = Vector3.Distance(_object.position, _slotTarget.position);
-        bool  correctPos   = dist <= _positionRadius;
+        // Check 2: interactor close to slot position
+        float dist  = Vector3.Distance(_interactor.position, _slotTarget.position);
+        bool  posOk = dist <= _insertRadius;
 
-        if (!correctPos)
+        if (!posOk)
         {
             if (!_wrongPosition)
             {
                 _wrongPosition = true;
-                OnWrongAction?.Invoke("Now slide the object into the slot!");
+                OnWrongAction?.Invoke("Slide your hand into the slot  [WASD to move]");
             }
             return false;
         }
-        else if (_wrongPosition)
-        {
-            _wrongPosition = false;
-            OnCorrectAction?.Invoke();
-        }
+        else if (_wrongPosition) { _wrongPosition = false; OnCorrectAction?.Invoke(); }
 
         return true;
     }
